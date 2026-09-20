@@ -1,6 +1,6 @@
 #EXTM3U
 #EXTINF:0 type="stream" channelId="4502" name="M1" logo="https://raw.githubusercontent.com/Lutz86/Csatorn-k/refs/heads/main/M1.png" size="Big", M1
-http://213.163.13.122:1559/udp/239.1.10.1:2000
+http://stream1.tvs24.net:25461/Kaszta_Melinda2__/TQQ6fyw8h6x9/14
 #EXTINF:0 type="stream" channelId="4504" name="M2" logo="https://raw.githubusercontent.com/Lutz86/Csatorn-k/refs/heads/main/M2.png" size="Big", M2
 http://213.163.13.122:1559/udp/239.1.10.2:2000
 #EXTINF:0 type="stream" channelId="1027" name="Duna" logo="https://raw.githubusercontent.com/Lutz86/Csatorn-k/refs/heads/main/Dunatv.png" size="Big", Duna

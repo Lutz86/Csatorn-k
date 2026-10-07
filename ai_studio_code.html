@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Siófok TV Dashboard (576×720)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      background-color: #000;
+      color: #fff;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Bing Wallpaper háttér rétegek fade átmenettel */
+    #bg-container {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+      background-color: #050811;
+    }
+
+    .bg-layer {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      transition: opacity 1s ease-in-out;
+    }
+
+    #bg-scrim {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at center, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.45) 100%);
+    }
+
+    /* 576 × 720 px TV Képernyő Canvas */
+    #dashboard {
+      position: relative;
+      z-index: 10;
+      width: 576px;
+      height: 720px;
+      max-width: 576px;
+      max-height: 720px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-sizing: border-box;
+    }
+
+    /* Glassmorphism üveghatású TV widgetek (~15% sötétített, blur, áttetsző) */
+    .tv-glass {
+      background: rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      border-radius: 18px;
+    }
+
+    /* TV távirányító / D-pad fókuszkeret */
+    button:focus-visible,
+    select:focus-visible,
+    input:focus-visible,
+    [tabindex]:focus-visible {
+      outline: 3px solid #38bdf8 !important;
+      outline-offset: 2px !important;
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.7) !important;
+    }
+
+    /* Felső sáv: Bal (Időjárás) + Jobb (Rádió) */
+    .top-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      height: 255px;
+    }
+
+    /* IDŐJÁRÁS WIDGET */
+    #weather-widget {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .widget-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      padding-bottom: 6px;
+    }
+
+    .widget-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .weather-title { color: #7dd3fc; }
+    .radio-title { color: #f472b6; }
+    .news-title { color: #fcd34d; }
+
+    .widget-status {
+      font-size: 11px;
+      font-family: monospace;
+      color: #94a3b8;
+    }
+
+    .current-weather {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 4px 0;
+    }
+
+    .weather-temp {
+      font-family: 'Outfit', sans-serif;
+      font-size: 40px;
+      font-weight: 800;
+      line-height: 1;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+    }
+
+    .weather-desc {
+      font-size: 12px;
+      font-weight: 600;
+      color: #e2e8f0;
+      margin-top: 2px;
+    }
+
+    .weather-icon-svg {
+      width: 44px;
+      height: 44px;
+      flex-shrink: 0;
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+    }
+
+    .forecast-container {
+      border-top: 1px solid rgba(255, 255, 255, 0.12);
+      padding-top: 6px;
+    }
+
+    .forecast-title {
+      font-size: 10px;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: #94a3b8;
+      margin-bottom: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    .forecast-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
+
+    .forecast-day {
+      font-weight: 600;
+      color: #f1f5f9;
+      width: 32px;
+    }
+
+    .forecast-temps {
+      font-family: monospace;
+      font-size: 11px;
+    }
+
+    .temp-min { color: #67e8f9; }
+    .temp-max { color: #fcd34d; font-weight: 700; }
+
+    /* RÁDIÓ WIDGET */
+    #radio-widget {
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    #station-select {
+      width: 100%;
+      background: rgba(15, 23, 42, 0.85);
+      color: #fff;
+      font-weight: 600;
+      font-size: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+      padding: 7px 10px;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .radio-station-name {
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+    }
+
+    .radio-station-sub {
+      font-size: 11px;
+      color: #cbd5e1;
+    }
+
+    .btn-play {
+      width: 100%;
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: none;
+      font-weight: 700;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: transform 0.1s ease, background-color 0.2s ease;
+      color: #fff;
+    }
+
+    .btn-play.playing { background-color: #f43f5e; }
+    .btn-play.paused { background-color: #10b981; }
+    .btn-play:active { transform: scale(0.96); }
+
+    .radio-controls-bottom {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-top: 1px solid rgba(255, 255, 255, 0.12);
+      padding-top: 6px;
+    }
+
+    .btn-mute {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
+      padding: 7px;
+      color: #fff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .btn-mute.is-muted {
+      background: rgba(245, 158, 11, 0.3);
+      border-color: #f59e0b;
+      color: #fde68a;
+    }
+
+    .slider-container {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.2);
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #38bdf8;
+      border: 2px solid #fff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    }
+
+    #volume-label {
+      font-size: 11px;
+      font-family: monospace;
+      color: #cbd5e1;
+      width: 32px;
+      text-align: right;
+    }
+
+    #radio-error {
+      display: none;
+      font-size: 10px;
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+      padding: 4px 6px;
+      border-radius: 6px;
+    }
+
+    /* KÖZÉP: NAGY ÓRA WIDGET */
+    #clock-widget {
+      padding: 22px 16px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .clock-display {
+      font-family: 'Outfit', sans-serif;
+      font-size: 82px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -2px;
+      text-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+    }
+
+    .clock-seconds {
+      font-family: monospace;
+      font-size: 26px;
+      color: #38bdf8;
+      font-weight: 700;
+      margin-left: 6px;
+    }
+
+    .date-display {
+      font-size: 20px;
+      font-weight: 600;
+      color: #f8fafc;
+      margin-top: 10px;
+      letter-spacing: 0.5px;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+      text-transform: capitalize;
+    }
+
+    /* KÖZÉPEN ALUL: HÍREK WIDGET */
+    #news-widget {
+      height: 168px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .news-content-box {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+      position: relative;
+      margin: 4px 0;
+    }
+
+    .news-article-item {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .news-slide-exit {
+      transform: translateY(-100%);
+      opacity: 0;
+    }
+
+    .news-slide-enter {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+
+    .news-image {
+      width: 110px;
+      height: 78px;
+      border-radius: 8px;
+      object-fit: cover;
+      flex-shrink: 0;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: #0f172a;
+    }
+
+    .news-text-col {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .news-headline {
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.35;
+      color: #fff;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+    }
+
+    .news-meta {
+      font-size: 11px;
+      color: #94a3b8;
+      margin-top: 4px;
+      display: flex;
+      gap: 8px;
+    }
+
+    .news-source {
+      font-weight: 600;
+      color: #38bdf8;
+    }
+
+    .news-progress-bar {
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .news-progress-fill {
+      height: 100%;
+      background: #fcd34d;
+      width: 0%;
+      transition: width 1s linear;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 1. HÁTTÉR - BING WALLPAPER -->
+  <div id="bg-container">
+    <div id="bg-layer-1" class="bg-layer" style="opacity: 1;"></div>
+    <div id="bg-layer-2" class="bg-layer" style="opacity: 0;"></div>
+    <div id="bg-scrim"></div>
+  </div>
+
+  <!-- 7. KÉPERNYŐ ELRENDEZÉSE (576 × 720 px TV KONTÉNER) -->
+  <main id="dashboard" role="main">
+
+    <!-- FELSŐ SÁV -->
+    <div class="top-row">
+
+      <!-- 2. IDŐJÁRÁS – BAL OLDAL -->
+      <section id="weather-widget" class="tv-glass" aria-label="Időjárás">
+        <div class="widget-header">
+          <div class="widget-title weather-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span id="weather-location-label">Siófok</span>
+          </div>
+          <div id="weather-last-update" class="widget-status">Frissítés...</div>
+        </div>
+
+        <!-- Aktuális időjárás -->
+        <div class="current-weather">
+          <div id="weather-icon-wrap">
+            <svg class="weather-icon-svg" viewBox="0 0 24 24" fill="none" stroke="#fcd34d" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+          </div>
+          <div>
+            <div id="weather-current-temp" class="weather-temp">--°</div>
+            <div id="weather-current-desc" class="weather-desc">Betöltés...</div>
+          </div>
+        </div>
+
+        <!-- 5 napos előrejelzés -->
+        <div class="forecast-container">
+          <div class="forecast-title">5 napos előrejelzés</div>
+          <div id="forecast-list"></div>
+        </div>
+      </section>
+
+      <!-- 4. RÁDIÓ – JOBB FELSŐ SAROK -->
+      <section id="radio-widget" class="tv-glass" aria-label="Rádió">
+        <audio id="audio-player" preload="auto"></audio>
+
+        <div class="widget-header">
+          <div class="widget-title radio-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg>
+            <span>Élő Rádió</span>
+          </div>
+          <div id="radio-live-badge" class="widget-status" style="color: #34d399;">Némítva</div>
+        </div>
+
+        <select id="station-select" aria-label="Rádióadó kiválasztása"></select>
+
+        <div>
+          <div id="station-name-display" class="radio-station-name">NRG Dance</div>
+          <div id="station-status-text" class="radio-station-sub">Kattints a hangszóróra a hangért</div>
+        </div>
+
+        <div id="radio-error"></div>
+
+        <button id="btn-play-pause" class="btn-play paused" aria-label="Lejátszás">
+          <svg id="play-icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <span id="play-text">LEJÁTSZÁS</span>
+        </button>
+
+        <div class="radio-controls-bottom">
+          <button id="btn-mute-toggle" class="btn-mute is-muted" aria-label="Hang bekapcsolása" title="Hang be/kikapcsolás">
+            <svg id="mute-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/></svg>
+          </button>
+          <div class="slider-container">
+            <input id="volume-slider" type="range" min="0" max="100" value="50" aria-label="Hangerő szabályozás">
+            <span id="volume-label">50%</span>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- 3. NAGY ÓRA – KÖZÉP -->
+    <section id="clock-widget" class="tv-glass" aria-label="Óra és dátum">
+      <div class="clock-display">
+        <span id="clock-hours-mins">--:--</span>
+        <span id="clock-secs" class="clock-seconds">--</span>
+      </div>
+      <div id="clock-date" class="date-display">2026. október 7., szerda</div>
+    </section>
+
+    <!-- 5. GOOGLE NEWS / RSS – KÖZÉPEN ALUL -->
+    <section id="news-widget" class="tv-glass" aria-label="Hírek">
+      <div class="widget-header">
+        <div class="widget-title news-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/></svg>
+          <span>Google Hírek · RSS</span>
+        </div>
+        <div id="news-counter" class="widget-status">Hír 1 / 15 · 60s</div>
+      </div>
+
+      <div class="news-content-box">
+        <div id="news-item-container" class="news-article-item">
+          <img id="news-img" class="news-image" src="" alt="Cikk képe" style="display: none;" onerror="this.style.display='none'">
+          <div class="news-text-col">
+            <div id="news-title-text" class="news-headline">Hírek betöltése folyamatban...</div>
+            <div class="news-meta">
+              <span id="news-source-text" class="news-source">Google News</span>
+              <span id="news-time-text">Legfrissebb</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="news-progress-bar">
+        <div id="news-progress-fill" class="news-progress-fill"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ========================================== -->
+  <!-- 10. KONFIGURÁCIÓ ÉS JAVASCRIPT LOGIKA      -->
+  <!-- ========================================== -->
+  <script>
+    const CONFIG = {
+      weatherLocation: "Siófok, Hungary",
+
+      weatherApiKey: "",
+
+      radioStations: [
+        {
+          name: "NRG Dance",
+          stream: "https://frontend.streamonkey.net/energy-dance/stream/mp3"
+        },
+        {
+          name: "MX Radio / Pulse Club",
+          stream: "https://icecast.pulsradio.com/mxHD.mp3"
+        },
+        {
+          name: "Radio 1 Balaton",
+          stream: "https://icast.connectmedia.hu/5201/live.mp3"
+        },
+        {
+          name: "Sláger FM Magyarország Budapest",
+          stream: "http://92.61.114.159:7812/slagerfm256.mp3"
+        },
+        {
+          name: "Retro Rádió",
+          stream: "https://icast.connectmedia.hu/5001/live.mp3"
+        },
+        {
+          name: "Oxygen Music Radio",
+          stream: "https://oxygenmusic.hu:8443/oxygenmusic_128"
+        },
+        {
+          name: "1.FM Dance Now",
+          stream: "https://strm112.1.fm/dance_mobile_mp3"
+        },
+        {
+          name: "RMF Dance",
+          stream: "http://195.150.20.9:8000/rmf%20dance"
+        }
+      ],
+
+      newsTopics: [
+        "Magyarország",
+        "világ",
+        "politika",
+        "technológia",
+        "mobil",
+        "számítástechnika",
+        "PC játékok",
+        "konzoljátékok",
+        "film",
+        "sorozatok",
+        "sztárok",
+        "sport",
+        "kultúra",
+        "tudomány"
+      ],
+
+      bingApi: "https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1&mkt=en-US"
+    };
+
+    // Időzítő a valódi rendszeróra :00, :15, stb. percéhez
+    function getNextSlotDelayMs(slotMinutes) {
+      const now = new Date();
+      const currentMin = now.getMinutes();
+      const sorted = [...slotMinutes].sort((a, b) => a - b);
+      const nextMin = sorted.find(m => m > currentMin);
+
+      let targetHour = now.getHours();
+      let targetDay = now.getDate();
+      let targetMin;
+
+      if (nextMin !== undefined) {
+        targetMin = nextMin;
+      } else {
+        targetMin = sorted[0];
+        targetHour = (targetHour + 1) % 24;
+        if (targetHour === 0) targetDay += 1;
+      }
+
+      const target = new Date(now.getFullYear(), now.getMonth(), targetDay, targetHour, targetMin, 0, 0);
+      return Math.max(1000, target.getTime() - now.getTime());
+    }
+
+    // 1. Bing Wallpaper logika
+    let currentBgLayer = 1;
+    let lastBgUrl = '';
+
+    function applyWallpaper(url) {
+      if (!url || url === lastBgUrl) return;
+      lastBgUrl = url;
+
+      const layer1 = document.getElementById('bg-layer-1');
+      const layer2 = document.getElementById('bg-layer-2');
+      const nextLayer = currentBgLayer === 1 ? layer2 : layer1;
+      const prevLayer = currentBgLayer === 1 ? layer1 : layer2;
+
+      const preloader = new Image();
+      preloader.onload = () => {
+        nextLayer.style.backgroundImage = `url('${url}')`;
+        nextLayer.style.opacity = '1';
+        prevLayer.style.opacity = '0';
+        currentBgLayer = currentBgLayer === 1 ? 2 : 1;
+      };
+      preloader.src = url;
+    }
+
+    async function updateBingWallpaper() {
+      try {
+        const res = await fetch('/api/bing-wallpaper');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.url) {
+            applyWallpaper(data.url);
+            return;
+          }
+        }
+      } catch (_) {}
+      applyWallpaper('https://www.bing.com/th?id=OHR.ForestofDean_EN-US7262962048_1920x1080.jpg&rf=LaDigue_1920x1080.jpg&pid=hp');
+    }
+
+    function scheduleBingWallpaper() {
+      updateBingWallpaper();
+      const delay = getNextSlotDelayMs([0, 15, 30, 45]);
+      setTimeout(scheduleBingWallpaper, delay);
+    }
+
+    // 3. Nagy Óra és Dátum logika
+    const HUNGARIAN_MONTHS = ['január', 'február', 'március', 'április', 'május', 'június', 'július', 'augusztus', 'szeptember', 'október', 'november', 'december'];
+    const HUNGARIAN_DAYS = ['vasárnap', 'hétfő', 'kedd', 'szerda', 'csütörtök', 'péntek', 'szombat'];
+
+    function updateClock() {
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      const ss = String(now.getSeconds()).padStart(2, '0');
+
+      document.getElementById('clock-hours-mins').textContent = `${hh}:${mm}`;
+      document.getElementById('clock-secs').textContent = `:${ss}`;
+
+      const year = now.getFullYear();
+      const month = HUNGARIAN_MONTHS[now.getMonth()];
+      const date = now.getDate();
+      const day = HUNGARIAN_DAYS[now.getDay()];
+
+      document.getElementById('clock-date').textContent = `${year}. ${month} ${date}., ${day}`;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // 2. Időjárás (Siófok + 5 napos előrejelzés)
+    const WMO_MAP = {
+      0: 'Derült, napos', 1: 'Túlnyomóan derült', 2: 'Részben felhős', 3: 'Borult',
+      45: 'Ködös', 48: 'Zúzmarás köd', 51: 'Gyenge szitálás', 53: 'Szitálás',
+      55: 'Sűrű szitálás', 61: 'Gyenge eső', 63: 'Mérsékelt eső', 65: 'Heves esőzés',
+      71: 'Gyenge havazás', 73: 'Havazás', 75: 'Erős havazás', 80: 'Zápor',
+      81: 'Heves zápor', 95: 'Zivatar'
+    };
+
+    function getWeatherSvg(code, isDay = true) {
+      if (code === 0 || code === 1) {
+        return `<svg class="weather-icon-svg" viewBox="0 0 24 24" fill="none" stroke="${isDay ? '#fcd34d' : '#bae6fd'}" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>`;
+      }
+      if (code === 2) {
+        return `<svg class="weather-icon-svg" viewBox="0 0 24 24" fill="none" stroke="#fcd34d" stroke-width="2"><path d="M12 2v2"/><path d="M4.93 4.93l1.41 1.41"/><path d="M20 12h2"/><path d="M17.5 19H9a5 5 0 0 1 0-10c.34 0 .67.04 1 .1A6 6 0 0 1 20 14a4 4 0 0 1-2.5 5Z"/></svg>`;
+      }
+      if (code === 3) {
+        return `<svg class="weather-icon-svg" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2"><path d="M17.5 19H9a5 5 0 0 1 0-10c.34 0 .67.04 1 .1A6 6 0 0 1 20 14a4 4 0 0 1-2.5 5Z"/></svg>`;
+      }
+      if (code >= 51 && code <= 65 || code >= 80) {
+        return `<svg class="weather-icon-svg" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"/><path d="M8 19v2M8 13v2M12 21v2M12 15v2M16 19v2M16 13v2"/></svg>`;
+      }
+      return `<svg class="weather-icon-svg" viewBox="0 0 24 24" fill="none" stroke="#fcd34d" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>`;
+    }
+
+    async function fetchWeatherData(onlyCurrent = false) {
+      try {
+        let data = null;
+        try {
+          const res = await fetch(`/api/weather${onlyCurrent ? '?currentOnly=true' : ''}`);
+          if (res.ok) data = await res.json();
+        } catch (_) {}
+
+        if (!data || !data.current) {
+          const lat = 46.9041, lon = 18.0580;
+          const directRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=Europe%2FBudapest&forecast_days=6`);
+          const json = await directRes.json();
+          data = {
+            current: {
+              temperature: Math.round(json.current.temperature_2m),
+              weatherCode: json.current.weather_code,
+              condition: WMO_MAP[json.current.weather_code] || 'Változó',
+              isDay: json.current.is_day === 1
+            },
+            daily: []
+          };
+          const huDays = ['Vas', 'Hét', 'Ked', 'Sze', 'Csü', 'Pén', 'Szo'];
+          for (let i = 1; i <= 5; i++) {
+            const d = new Date(json.daily.time[i]);
+            data.daily.push({
+              dayName: huDays[d.getDay()],
+              weatherCode: json.daily.weather_code[i],
+              tempMin: Math.round(json.daily.temperature_2m_min[i]),
+              tempMax: Math.round(json.daily.temperature_2m_max[i])
+            });
+          }
+        }
+
+        if (data && data.current) {
+          document.getElementById('weather-current-temp').textContent = `${data.current.temperature}°`;
+          document.getElementById('weather-current-desc').textContent = data.current.condition;
+          document.getElementById('weather-icon-wrap').innerHTML = getWeatherSvg(data.current.weatherCode, data.current.isDay);
+
+          const now = new Date();
+          document.getElementById('weather-last-update').textContent = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}-kor`;
+        }
+
+        if (!onlyCurrent && data && data.daily && data.daily.length > 0) {
+          const list = document.getElementById('forecast-list');
+          list.innerHTML = '';
+          data.daily.slice(0, 5).forEach(day => {
+            const row = document.createElement('div');
+            row.className = 'forecast-row';
+            row.innerHTML = `
+              <span class="forecast-day">${day.dayName}</span>
+              <div style="width: 20px; display: flex; justify-content: center;">
+                ${getWeatherSvg(day.weatherCode, true).replace('weather-icon-svg', '').replace(/width="44"/, 'width="16"').replace(/height="44"/, 'height="16"')}
+              </div>
+              <span class="forecast-temps">
+                <span class="temp-min">${day.tempMin}°</span> / <span class="temp-max">${day.tempMax}°</span>
+              </span>
+            `;
+            list.appendChild(row);
+          });
+        }
+      } catch (err) {
+        console.warn('Weather error:', err);
+      }
+    }
+
+    function scheduleWeatherUpdates() {
+      fetchWeatherData(false);
+      const loop = () => {
+        const delay = getNextSlotDelayMs([0, 10, 20, 30, 40, 50]);
+        setTimeout(() => {
+          fetchWeatherData(true);
+          loop();
+        }, delay);
+      };
+      loop();
+    }
+
+    // 4. Rádiólejátszó logika
+    const audio = document.getElementById('audio-player');
+    const select = document.getElementById('station-select');
+    const btnPlay = document.getElementById('btn-play-pause');
+    const btnMute = document.getElementById('btn-mute-toggle');
+    const slider = document.getElementById('volume-slider');
+    const volLabel = document.getElementById('volume-label');
+    const stationName = document.getElementById('station-name-display');
+    const statusText = document.getElementById('station-status-text');
+    const errorBox = document.getElementById('radio-error');
+    const liveBadge = document.getElementById('radio-live-badge');
+
+    CONFIG.radioStations.forEach((station, i) => {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = `${i + 1}. ${station.name}`;
+      select.appendChild(opt);
+    });
+
+    let isPlaying = false;
+    let isMuted = true;
+    let currentStationIndex = 0;
+
+    audio.volume = 0.5;
+    audio.muted = true;
+
+    function setStation(index) {
+      currentStationIndex = index;
+      const st = CONFIG.radioStations[index];
+      stationName.textContent = st.name;
+      errorBox.style.display = 'none';
+
+      const cleanStreamUrl = st.stream.replace(/ /g, '%20');
+      audio.src = cleanStreamUrl;
+      audio.muted = isMuted;
+
+      const p = audio.play();
+      if (p !== undefined) {
+        p.then(() => {
+          setPlayState(true);
+        }).catch(() => {
+          setPlayState(false);
+          if (window.location.protocol === 'https:' && cleanStreamUrl.startsWith('http:')) {
+            errorBox.textContent = 'HTTP stream blokkolva HTTPS alatt (Mixed Content)';
+            errorBox.style.display = 'block';
+          }
+        });
+      }
+    }
+
+    function setPlayState(playing) {
+      isPlaying = playing;
+      if (playing) {
+        btnPlay.className = 'btn-play playing';
+        document.getElementById('play-icon').innerHTML = '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
+        document.getElementById('play-text').textContent = 'SZÜNET';
+        liveBadge.textContent = isMuted ? 'Némítva' : 'Élő adás';
+        statusText.textContent = isMuted ? 'Némítva (kattints a hangszóróra)' : 'Lejátszás aktív';
+      } else {
+        btnPlay.className = 'btn-play paused';
+        document.getElementById('play-icon').innerHTML = '<polygon points="5 3 19 12 5 21 5 3"/>';
+        document.getElementById('play-text').textContent = 'LEJÁTSZÁS';
+        statusText.textContent = 'Szüneteltetve';
+      }
+    }
+
+    btnPlay.addEventListener('click', () => {
+      if (isPlaying) {
+        audio.pause();
+        setPlayState(false);
+      } else {
+        audio.muted = isMuted;
+        audio.play().then(() => setPlayState(true)).catch(() => {
+          errorBox.textContent = 'A stream jelenleg nem érhető el';
+          errorBox.style.display = 'block';
+        });
+      }
+    });
+
+    btnMute.addEventListener('click', () => {
+      isMuted = !isMuted;
+      audio.muted = isMuted;
+      btnMute.className = isMuted ? 'btn-mute is-muted' : 'btn-mute';
+      liveBadge.textContent = isMuted ? 'Némítva' : 'Élő adás';
+      statusText.textContent = isMuted ? 'Némítva (kattints a hangszóróra)' : 'Lejátszás aktív';
+    });
+
+    slider.addEventListener('input', (e) => {
+      const val = e.target.value;
+      volLabel.textContent = `${val}%`;
+      audio.volume = val / 100;
+    });
+
+    select.addEventListener('change', (e) => {
+      setStation(parseInt(e.target.value, 10));
+    });
+
+    audio.addEventListener('error', () => {
+      const st = CONFIG.radioStations[currentStationIndex];
+      if (window.location.protocol === 'https:' && st.stream.startsWith('http:')) {
+        errorBox.textContent = 'HTTP stream – vegyes tartalom miatt blokkolva';
+      } else {
+        errorBox.textContent = 'Stream kapcsolódási hiba';
+      }
+      errorBox.style.display = 'block';
+      setPlayState(false);
+    });
+
+    setStation(0);
+
+    // 5. Google News RSS Hírolvasó logika
+    let articles = [];
+    let currentArticleIndex = 0;
+    let secondsLeft = 60;
+
+    async function fetchGoogleNews() {
+      try {
+        let loaded = [];
+        try {
+          const res = await fetch('/api/news');
+          if (res.ok) {
+            const json = await res.json();
+            if (json.articles && json.articles.length > 0) loaded = json.articles;
+          }
+        } catch (_) {}
+
+        if (loaded.length === 0) {
+          const fallbackRes = await fetch('https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent('https://news.google.com/rss?hl=hu&gl=HU&ceid=HU:hu'));
+          const fJson = await fallbackRes.json();
+          if (fJson.items) {
+            loaded = fJson.items.map(it => ({
+              title: it.title,
+              imageUrl: it.enclosure?.link || it.thumbnail || '',
+              source: it.author || 'Google News',
+              pubDate: it.pubDate
+            }));
+          }
+        }
+
+        if (loaded.length > 0) {
+          articles = loaded.slice(0, 15);
+          currentArticleIndex = 0;
+          secondsLeft = 60;
+          renderArticle(0);
+        }
+      } catch (err) {
+        console.warn('News error:', err);
+      }
+    }
+
+    function renderArticle(idx) {
+      if (!articles[idx]) return;
+      const art = articles[idx];
+      const titleEl = document.getElementById('news-title-text');
+      const imgEl = document.getElementById('news-img');
+      const sourceEl = document.getElementById('news-source-text');
+      const timeEl = document.getElementById('news-time-text');
+      const counterEl = document.getElementById('news-counter');
+
+      titleEl.textContent = art.title;
+      sourceEl.textContent = art.source || 'Hírek';
+
+      if (art.imageUrl) {
+        imgEl.src = art.imageUrl;
+        imgEl.style.display = 'block';
+      } else {
+        imgEl.style.display = 'none';
+      }
+
+      if (art.pubDate) {
+        const d = new Date(art.pubDate);
+        timeEl.textContent = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      } else {
+        timeEl.textContent = 'Legfrissebb';
+      }
+
+      counterEl.textContent = `Hír ${idx + 1} / ${articles.length} · ${secondsLeft}s`;
+    }
+
+    function rotateNextArticle() {
+      if (articles.length <= 1) return;
+      const box = document.getElementById('news-item-container');
+
+      box.className = 'news-article-item news-slide-exit';
+
+      setTimeout(() => {
+        currentArticleIndex = (currentArticleIndex + 1) % articles.length;
+        renderArticle(currentArticleIndex);
+        box.className = 'news-article-item news-slide-enter';
+
+        setTimeout(() => {
+          box.className = 'news-article-item';
+        }, 500);
+      }, 500);
+    }
+
+    setInterval(() => {
+      if (articles.length === 0) return;
+      secondsLeft--;
+      if (secondsLeft <= 0) {
+        secondsLeft = 60;
+        rotateNextArticle();
+      }
+
+      const counterEl = document.getElementById('news-counter');
+      counterEl.textContent = `Hír ${currentArticleIndex + 1} / ${articles.length} · ${secondsLeft}s`;
+
+      const progress = ((60 - secondsLeft) / 60) * 100;
+      document.getElementById('news-progress-fill').style.width = `${progress}%`;
+    }, 1000);
+
+    function scheduleNewsFetch() {
+      fetchGoogleNews();
+      const delay = getNextSlotDelayMs([0, 15, 30, 45]);
+      setTimeout(scheduleNewsFetch, delay);
+    }
+
+    // Inicializálás
+    scheduleBingWallpaper();
+    scheduleWeatherUpdates();
+    scheduleNewsFetch();
+  </script>
+</body>
+</html>
